@@ -502,7 +502,7 @@ open class MapView: UIView, SizeTrackingLayerDelegate {
         reduceMemoryUse()
     }
 
-    private func reduceMemoryUse() {
+    func reduceMemoryUse() {
         mapboxMap.reduceMemoryUse()
         metalView?.releaseDrawables()
     }

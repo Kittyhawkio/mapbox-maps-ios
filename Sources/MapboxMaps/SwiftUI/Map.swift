@@ -44,9 +44,13 @@ import SwiftUI
 ///
 /// Check out the <doc:SwiftUI-User-Guide> for more information about ``Map`` capabilities, and the <doc:Map-Content-Gestures-User-Guide> for more information about gesture handling.
 public struct Map: UIViewControllerRepresentable {
+
     var mapDependencies = MapDependencies()
     private var viewport: ConstantOrBinding<Viewport>
     private let urlOpenerProvider: URLOpenerProvider
+
+    @Binding
+    public var reduceMemoryUsage: Bool
 
     @Environment(\.layoutDirection) var layoutDirection
 
@@ -58,11 +62,13 @@ public struct Map: UIViewControllerRepresentable {
     @available(iOSApplicationExtension, unavailable)
     public init(
         viewport: Binding<Viewport>,
+        reduceMemoryUsage: Binding<Bool> = .constant(false),
         @MapContentBuilder content: @escaping () -> some MapContent
     ) {
         self.init(
             _viewport: .binding(viewport),
             urlOpenerProvider: URLOpenerProvider(),
+            reduceMemoryUsage: reduceMemoryUsage,
             content: content)
     }
 
@@ -74,21 +80,25 @@ public struct Map: UIViewControllerRepresentable {
     @available(iOSApplicationExtension, unavailable)
     public init(
         initialViewport: Viewport = .styleDefault,
+        reduceMemoryUsage: Binding<Bool> = .constant(false),
         @MapContentBuilder content: @escaping () -> some MapContent
     ) {
         self.init(
             _viewport: .constant(initialViewport),
             urlOpenerProvider: URLOpenerProvider(),
+            reduceMemoryUsage: reduceMemoryUsage,
             content: content)
     }
 
     private init(
         _viewport: ConstantOrBinding<Viewport>,
         urlOpenerProvider: URLOpenerProvider,
+        reduceMemoryUsage: Binding<Bool> = .constant(false),
         content: (() -> any MapContent)? = nil
     ) {
         self.viewport = _viewport
         self.urlOpenerProvider = urlOpenerProvider
+        self._reduceMemoryUsage = reduceMemoryUsage
         if let makeContent = content {
             mapDependencies.mapContent = makeContent
         }
@@ -144,6 +154,9 @@ public struct Map: UIViewControllerRepresentable {
             deps: mapDependencies,
             layoutDirection: layoutDirection,
             animationData: context.transaction.viewportAnimationData)
+        if reduceMemoryUsage {
+            context.coordinator.reduceMemoryUsage()
+        }
     }
 }
 
@@ -154,10 +167,12 @@ extension Map {
     /// - Parameters:
     ///     - viewport: The camera viewport to display.
     @available(iOSApplicationExtension, unavailable)
-    public init(viewport: Binding<Viewport>) {
+    public init(viewport: Binding<Viewport>,
+                reduceMemoryUsage: Binding<Bool> = .constant(false)) {
         self.init(
             _viewport: .binding(viewport),
-            urlOpenerProvider: URLOpenerProvider()
+            urlOpenerProvider: URLOpenerProvider(),
+            reduceMemoryUsage: reduceMemoryUsage
         )
     }
 
@@ -166,10 +181,12 @@ extension Map {
     /// - Parameters:
     ///     - initialViewport: Initial camera viewport.
     @available(iOSApplicationExtension, unavailable)
-    public init(initialViewport: Viewport = .styleDefault) {
+    public init(initialViewport: Viewport = .styleDefault,
+                reduceMemoryUsage: Binding<Bool> = .constant(false)) {
         self.init(
             _viewport: .constant(initialViewport),
-            urlOpenerProvider: URLOpenerProvider()
+            urlOpenerProvider: URLOpenerProvider(),
+            reduceMemoryUsage: reduceMemoryUsage
         )
     }
 
@@ -187,11 +204,13 @@ extension Map {
     public init(
         viewport: Binding<Viewport>,
         urlOpener: @escaping MapURLOpener,
+        reduceMemoryUsage: Binding<Bool> = .constant(false),
         @MapContentBuilder content: @escaping () -> some MapContent
     ) {
         self.init(
             _viewport: .binding(viewport),
             urlOpenerProvider: URLOpenerProvider(userUrlOpener: urlOpener),
+            reduceMemoryUsage: reduceMemoryUsage,
             content: content)
     }
 
@@ -209,11 +228,13 @@ extension Map {
     public init(
         initialViewport: Viewport = .styleDefault,
         urlOpener: @escaping MapURLOpener,
+        reduceMemoryUsage: Binding<Bool> = .constant(false),
         @MapContentBuilder content: @escaping () -> some MapContent
     ) {
         self.init(
             _viewport: .constant(initialViewport),
             urlOpenerProvider: URLOpenerProvider(userUrlOpener: urlOpener),
+            reduceMemoryUsage: reduceMemoryUsage,
             content: content)
     }
 }
@@ -390,6 +411,10 @@ extension Map {
             self.viewController = viewController
             self.urlOpener = urlOpener
             self.mapView = mapView
+        }
+
+        func reduceMemoryUsage() {
+            mapView.reduceMemoryUse()
         }
     }
 
